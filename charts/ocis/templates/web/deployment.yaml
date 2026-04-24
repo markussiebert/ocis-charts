@@ -27,8 +27,7 @@ spec:
             runAsUser: 0
           {{- include "ocis.initChownDataCommand" $ | nindent 10 }}
           volumeMounts:
-          - name: {{ include "ocis.persistence.dataVolumeName" . }}
-            mountPath: /var/lib/ocis
+          {{- include "ocis.persistence.dataVolumeMount" . | nindent 10 }}
       {{- end }}
       {{- with $.Values.services.web.additionalInitContainers }}
         {{ toYaml . | nindent 8 }}
@@ -68,7 +67,11 @@ spec:
               value: 0.0.0.0:9104
 
             - name: WEB_OIDC_AUTHORITY
-            {{- if not .Values.features.externalUserManagement.enabled }}
+            {{- if .Values.features.externalOIDC.enabled }}
+              value: {{ .Values.features.externalOIDC.issuerURI | quote }}
+            - name: WEB_OIDC_METADATA_URL
+              value: "https://{{ .Values.externalDomain }}/.well-known/openid-configuration"
+            {{- else if not .Values.features.externalUserManagement.enabled }}
               value: "https://{{ .Values.externalDomain }}"
             {{- else }}
               value: {{ .Values.features.externalUserManagement.oidc.issuerURI | quote }}
@@ -220,8 +223,7 @@ spec:
             {{- end }}
             - name: apps
               mountPath: /var/lib/ocis/web/assets/apps
-            - name: {{ include "ocis.persistence.dataVolumeName" . }}
-              mountPath: /var/lib/ocis
+            {{- include "ocis.persistence.dataVolumeMount" . | nindent 12 }}
             {{- include "ocis.caPath" $ | nindent 12}}
 
       {{- include "ocis.imagePullSecrets" $ | nindent 6 }}
